@@ -1,5 +1,8 @@
 package lu.post.testing.chat;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
@@ -14,14 +17,15 @@ import java.util.concurrent.CopyOnWriteArraySet;
         encoders = MessageEncoder.class )
 public class ChatEndpoint {
 
+    private static final Logger LOGGER = LogManager.getLogger(ChatEndpoint.class);
+
     private Session session;
     private static Set<ChatEndpoint> chatEndpoints
             = new CopyOnWriteArraySet<>();
     private static HashMap<String, String> users = new HashMap<>();
 
     @OnOpen
-    public void onOpen(Session session,@PathParam("username") String username)
-            throws IOException, EncodeException {
+    public void onOpen(Session session,@PathParam("username") String username) {
         // Get session and WebSocket connection
         this.session = session;
         chatEndpoints.add(this);
@@ -35,13 +39,13 @@ public class ChatEndpoint {
     }
 
     @OnMessage
-    public void onMessage(Session session,Message message) throws IOException, EncodeException {
+    public void onMessage(Session session,Message message) {
         message.setFrom(users.get(session.getId()));
         broadcast(message);
     }
 
     @OnClose
-    public void onClose(Session session) throws IOException, EncodeException {
+    public void onClose(Session session) {
         // WebSocket connection closes
         chatEndpoints.remove(this);
         Message message = new Message();
@@ -55,9 +59,7 @@ public class ChatEndpoint {
         // Do error handling here
     }
 
-
-    private static void broadcast(Message message)
-            throws IOException, EncodeException {
+    private static void broadcast(Message message) {
 
         chatEndpoints.forEach(endpoint -> {
             synchronized (endpoint) {
@@ -65,7 +67,7 @@ public class ChatEndpoint {
                     endpoint.session.getBasicRemote().
                             sendObject(message);
                 } catch (IOException | EncodeException e) {
-                    e.printStackTrace();
+                    LOGGER.error(e);
                 }
             }
         });
